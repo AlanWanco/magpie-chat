@@ -572,6 +572,15 @@ input, textarea { font: inherit; color: inherit; }
 .switch[aria-checked="true"] .switch-thumb { transform: translateX(12px); }
 
 /* ---------- 消息流：行式布局，无气泡 ---------- */
+/* 滚动容器与浮层滚动条的定位上下文 */
+.stream-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .stream {
   flex: 1 1 auto;
   min-height: 0;
@@ -581,26 +590,46 @@ input, textarea { font: inherit; color: inherit; }
   padding: 6px clamp(20px, 5vw, 72px) 4px;
   user-select: text;
   -webkit-user-select: text;
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  /* 滚动条不占位，内容宽度不会被它挤动 */
-  scrollbar-gutter: auto;
+  /* 和 magpie 一样：原生滚动条彻底隐藏，自己画一个浮层 —— 原生条在静止时
+     会占一条 gutter，这也是 magpie 不用它的原因（app.css 的 side-bar 同款做法） */
+  scrollbar-width: none;
 }
+.stream::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
-/* 滚动条：细、圆角、平时透明，滚动时浮现，3 秒没有滚动就淡掉 */
-.stream::-webkit-scrollbar { width: 10px; height: 10px; }
-.stream::-webkit-scrollbar-track { background: transparent; }
-.stream::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border: 3px solid transparent;
-  border-radius: 6px;
-  background-clip: content-box;
-  transition: background-color .4s ease;
+/* 浮层滚动条：规格照抄 magpie 的 .side-bar / .side-bar > i
+   静止 opacity:0；滚动时 .on 露出来；悬停或拖动时变宽变深 */
+.scroll-bar {
+  position: absolute;
+  right: 4px;
+  width: 11px;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease .1s;
 }
-.stream.scrolling::-webkit-scrollbar-thumb { background-color: var(--line); }
-.stream::-webkit-scrollbar-thumb:hover { background-color: var(--fg-2); }
-/* Firefox / 支持 scrollbar-color 的内核 */
-.stream.scrolling { scrollbar-color: var(--line) transparent; }
+.scroll-bar.on, .scroll-bar.drag {
+  opacity: 1;
+  pointer-events: auto;
+  transition-duration: .1s;
+  transition-delay: 0s;
+}
+.scroll-bar[hidden] { display: none; }
+.scroll-bar > i {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  width: 6px;
+  min-height: 24px;
+  border-radius: 3px;
+  background: var(--muted);
+  opacity: .55;
+  transition: width .15s ease, opacity .15s ease;
+  touch-action: none;
+}
+.scroll-bar:hover > i, .scroll-bar.drag > i { width: 8px; opacity: .75; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .scroll-bar, .scroll-bar > i { transition: none; }
+}
 
 /* 消息列也收一点，读起来不至于一屏 200 个字 */
 /* 会话内容列：宽度由设置里的滑条控制（--conv-w），默认 980px；

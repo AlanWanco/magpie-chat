@@ -33,7 +33,11 @@
   </button>
 
   <main class="main">
-    <div class="stream" id="stream"></div>
+    <!-- 会话区：滚动容器 + 浮层滚动条（和 magpie 自己的做法一致） -->
+    <div class="stream-wrap" id="streamWrap">
+      <div class="stream" id="stream"></div>
+      <div class="scroll-bar" id="scrollBar" hidden aria-hidden="true"><i></i></div>
+    </div>
 
     <div class="composer" id="composer">
       <div class="field" id="dropZone">

@@ -1302,18 +1302,94 @@ function persistConversation() {
 
 /* ================= 消息渲染 ================= */
 
-// 滚动条 3 秒无操作就渐隐：滚动时加 .scrolling 浮现，静止 3 秒后去掉
-var scrollFadeTimer = null;
-function markScrolling() {
+// 浮层滚动条：照 magpie 自己的做法（app.css 的 .side-bar / app.js 的 sideBars）。
+// 原生滚动条全程隐藏，这里画一个 6px 的圆角条，滚动时露出、停手后淡出，还能拖动。
+var barState = { fadeTimer: null, hideTimer: null, dragging: false, startY: 0, startTop: 0 };
+
+function scrollBarEls() {
+  var wrap = $("#streamWrap");
+  var bar = $("#scrollBar");
+  return { wrap: wrap, bar: bar, thumb: bar ? bar.querySelector("i") : null };
+}
+
+// 依据当前滚动位置算出滑块的高度与位置；不需要滚动时隐藏
+function paintScrollBar() {
   var stream = $("#stream");
-  if (!stream) return;
-  stream.classList.add("scrolling");
-  if (scrollFadeTimer) clearTimeout(scrollFadeTimer);
-  scrollFadeTimer = setTimeout(function () {
-    var s = $("#stream");
-    if (s) s.classList.remove("scrolling");
-    scrollFadeTimer = null;
-  }, 3000);
+  var e = scrollBarEls();
+  if (!stream || !e.bar || !e.thumb || !e.wrap) return;
+  var viewH = e.wrap.clientHeight;
+  var trackH = Math.max(0, viewH - 8); // 上下各留 4px，和 magpie 的 right:4px 对齐
+  var ratio = stream.clientHeight / stream.scrollHeight;
+  if (stream.scrollHeight <= stream.clientHeight + 1) {
+    e.bar.hidden = true;
+    e.bar.classList.remove("on");
+    return;
+  }
+  e.bar.hidden = false;
+  e.bar.style.top = "4px";
+  e.bar.style.height = trackH + "px";
+  var thumbH = Math.max(24, Math.round(trackH * ratio));
+  e.thumb.style.height = thumbH + "px";
+  var maxTop = trackH - thumbH;
+  var top = stream.scrollHeight > stream.clientHeight
+    ? (stream.scrollTop / (stream.scrollHeight - stream.clientHeight)) * maxTop
+    : 0;
+  e.thumb.style.top = Math.max(0, Math.min(maxTop, top)) + "px";
+}
+
+// 滚动时露出，停手 1.2 秒后淡出（magpie 的过渡是 .35s + .1s 延迟）
+function flashScrollBar() {
+  var e = scrollBarEls();
+  if (!e.bar) return;
+  paintScrollBar();
+  if (e.bar.hidden) return;
+  e.bar.classList.add("on");
+  if (barState.fadeTimer) clearTimeout(barState.fadeTimer);
+  barState.fadeTimer = setTimeout(function () {
+    if (!barState.dragging) e.bar.classList.remove("on");
+    barState.fadeTimer = null;
+  }, 1200);
+}
+
+// 拖动滑块
+function bindScrollBarDrag() {
+  var e = scrollBarEls();
+  if (!e.bar || !e.thumb) return;
+  e.bar.addEventListener("mousedown", function (ev) {
+    var stream = $("#stream");
+    if (!stream || ev.button !== 0) return;
+    var rect = e.thumb.getBoundingClientRect();
+    var onThumb = ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+    if (!onThumb) {
+      // 点空白处：让滑块跳到指针位置
+      var barRect = e.bar.getBoundingClientRect();
+      var frac = (ev.clientY - barRect.top) / Math.max(1, barRect.height);
+      stream.scrollTop = frac * (stream.scrollHeight - stream.clientHeight);
+      flashScrollBar();
+      return;
+    }
+    barState.dragging = true;
+    barState.startY = ev.clientY;
+    barState.startTop = stream.scrollTop;
+    e.bar.classList.add("drag");
+    ev.preventDefault();
+  });
+  document.addEventListener("mousemove", function (ev) {
+    if (!barState.dragging) return;
+    var stream = $("#stream");
+    if (!stream) return;
+    var trackH = Math.max(0, e.bar.clientHeight - 8);
+    var thumbH = e.thumb.offsetHeight;
+    var maxTop = Math.max(1, trackH - thumbH);
+    var maxScroll = stream.scrollHeight - stream.clientHeight;
+    stream.scrollTop = barState.startTop + ((ev.clientY - barState.startY) / maxTop) * maxScroll;
+  });
+  document.addEventListener("mouseup", function () {
+    if (!barState.dragging) return;
+    barState.dragging = false;
+    e.bar.classList.remove("drag");
+    flashScrollBar();
+  });
 }
 
 function scrollBottom(force) {
@@ -1878,8 +1954,10 @@ function bindUI() {
   bindAttachments();
   bindResizers();
 
-  // 滚动条渐隐：滚动时浮现，停 3 秒淡出
-  $("#stream").addEventListener("scroll", markScrolling, { passive: true });
+  // 滚动条：滚时浮现，停手淡出；可拖动
+  $("#stream").addEventListener("scroll", flashScrollBar, { passive: true });
+  bindScrollBarDrag();
+  window.addEventListener("resize", paintScrollBar);
 
   $("#systemInput").addEventListener("input", function (e) {
     patchSettings({ system: e.target.value });
