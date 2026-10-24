@@ -1,0 +1,82 @@
+# magpie-chat
+
+在 magpie 窗口里加一个「对话」页面：直接用 magpie 已经接好的模型、指令、技能和 MCP 服务器聊天，不用再开一个 Agent。
+
+![浅色](screenshots/10-light-chat.png)
+
+## 功能
+
+- **一个页面**。装好后侧栏「插件」分组里出现「对话」。
+- **用 magpie 的模型**。模型列表来自网关 `/v1/models`，切换即时生效；有推理档位的模型会给出对应的思考强度选项。
+- **用 magpie 的配置**。右侧栏里勾选 `~/.config/magpie/library/` 的指令与技能（拼进 system prompt）、勾选 MCP 服务器（工具以 `tool_calls` 真正执行）。
+- **多模态**。左下角「+」选图片/文件，也可以直接把文件拖进页面，或粘贴剪贴板里的图片。图片以 `image_url` 交给模型，气泡里显示缩略图、点开看大图。
+- **流式输出**。思考过程边收边展开，输出结束后自动收起；正文逐字出。
+- **公式**。`$…$`、`$$…$$`、`\(…\)`、`\[…\]` 由本地 KaTeX 渲染（随包打包，不连 CDN）。
+- **对话留存**。存在 magpie 配置目录的 `magpie-chat/conversations/`；每条可以置顶或删除。
+- **和 magpie 同一个样子**。配色与字体取自 magpie 自己的设计令牌，切主题时对话页跟着变；左右两侧栏都能拖拽调宽、也都能收起。
+
+## 安装
+
+```powershell
+magpie plugin add Magiczerowxy/magpie-chat
+```
+
+或者在应用里：插件 → 发现 → 非官方插件 · GitHub → 找到 **Chat** → 添加。
+
+装好后侧栏「插件」里点「对话」。
+
+## 没有登录，也没有账号
+
+这个插件**不注册供应商、不需要登录、不保存任何凭据**。它复用 magpie 自己已经配好的模型和额度，请求全部由 magpie 的网关发出，所以用量与故障切换和 Agent 一致。
+
+它保存的只有你自己的东西，都在 magpie 配置目录下：
+
+```
+~/.config/magpie/magpie-chat/
+├── settings.json      模型、思考强度、系统提示词、勾选的指令/技能/MCP、窗口布局
+└── conversations/     每个对话一个 JSON
+```
+
+## 它怎么工作
+
+magpie 的插件页面跑在 `sandbox="allow-scripts"` 的框架里：没有网络权限、不能内嵌框架、不能用存储，唯一允许的联网动作是把自身导航到别处。所以这个插件是两层的：
+
+1. `page/index.html` 是 magpie 托管的「带路页」，读窗口主题后 `location.replace` 到本地服务。
+2. `index.mjs` 作为 OpenCode v1 插件被 magpie 的 Bun 宿主加载，加载时启动那个本地服务（`127.0.0.1:3477`，不注册供应商，只借宿主进程）。
+3. `lib/server.mjs` 提供 `/api/*` 并把聊天请求转发给 magpie 网关；`chat/` 是真正的界面。
+
+服务只监听回环地址，并且拒绝非同源请求（只接受 opaque 的 `Origin: null` 与自身 origin），任意网页都无法借它烧额度。
+
+## 插件选项
+
+```json
+{ "port": 3477 }
+```
+
+`port` 是本地服务端口，改动后重新打开插件生效。
+
+没有运行时依赖，不需要构建，仓库里的文件就是 magpie 加载的文件。
+
+## 目录
+
+```
+index.mjs            插件入口（启动本地服务）
+page/                带路页（magpie 托管）
+chat/                对话界面：index.html / app.js / style.css / vendor/katex
+lib/server.mjs       HTTP 路由、SSE、设置与对话持久化
+lib/gateway.mjs      magpie 网关客户端
+lib/library.mjs      读取 magpie 的指令、技能、MCP 与供应商图标
+lib/mcp.mjs          MCP 客户端（Streamable HTTP + stdio）
+assets/icon.svg      插件图标
+```
+
+## 已知限制
+
+- MCP 只实现了 Streamable HTTP 与 stdio，不含旧版 GET SSE 长连接与断线重连。
+- 图片以 base64 内联发送，单图上限 24MB；对话很长时请求体也会变大。
+- 供应商图标：magpie 的内置图标编在它自己的二进制里，取不到时服务端会画一个首字母 SVG。
+- 工具调用最多 8 轮。
+
+## 许可
+
+MIT

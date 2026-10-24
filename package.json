@@ -1,0 +1,53 @@
+{
+  "name": "magpie-chat",
+  "version": "0.1.0",
+  "description": "A chat page inside magpie's window: use magpie's own models, MCP servers, instructions and skills — with images, files and LaTeX.",
+  "type": "module",
+  "main": "./index.mjs",
+  "files": [
+    "index.mjs",
+    "lib",
+    "chat",
+    "page",
+    "assets",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "magpie",
+    "magpie-plugin",
+    "opencode",
+    "opencode-plugin",
+    "opencode-page",
+    "chat",
+    "ai",
+    "llm"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Magiczerowxy/magpie-chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Magiczerowxy/magpie-chat/issues"
+  },
+  "homepage": "https://github.com/Magiczerowxy/magpie-chat#readme",
+  "engines": {
+    "magpie": ">=0.1.1340"
+  },
+  "magpie": {
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCI+CiAgPHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIHJ4PSIyOCIgZmlsbD0iIzRmNDZlNSIvPgogIDxwYXRoIGQ9Ik0zMCAzOGg2OGE4IDggMCAwIDEgOCA4djM0YTggOCAwIDAgMS04IDhINjBsLTE2IDE0di0xNGgtMTRhOCA4IDAgMCAxLTgtOFY0NmE4IDggMCAwIDEgOC04eiIgZmlsbD0iI2ZmZiIvPgogIDxnIGZpbGw9IiM0ZjQ2ZTUiPgogICAgPGNpcmNsZSBjeD0iNDYiIGN5PSI1OCIgcj0iNSIvPgogICAgPGNpcmNsZSBjeD0iNjQiIGN5PSI1OCIgcj0iNSIvPgogICAgPGNpcmNsZSBjeD0iODIiIGN5PSI1OCIgcj0iNSIvPgogIDwvZz4KPC9zdmc+Cg==",
+    "page": {
+      "title": "Chat",
+      "file": "page/index.html",
+      "titles": {
+        "zh": "对话",
+        "zh-TW": "對話",
+        "ja": "チャット"
+      }
+    }
+  },
+  "scripts": {
+    "start": "node -e \"import('./index.mjs')\""
+  }
+}

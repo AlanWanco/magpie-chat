@@ -1,0 +1,14 @@
+# 自测与临时文件
+tmp/
+screenshots/*.tmp.png
+*.log
+
+# 编辑器与系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+node_modules/
+
+# DSH 的编辑锁
+.dsh-ops-update-*.lock
