@@ -15,12 +15,11 @@
   ],
   "keywords": [
     "magpie",
+    "magpie-page",
     "magpie-plugin",
     "opencode",
     "opencode-plugin",
-    "opencode-page",
     "chat",
-    "ai",
     "llm"
   ],
   "license": "MIT",
@@ -44,8 +43,10 @@
         "zh": "对话",
         "zh-TW": "對話",
         "ja": "チャット"
-      }
-    }
+      },
+      "icon": "assets/icon.svg"
+    },
+    "permissions": []
   },
   "scripts": {
     "start": "node -e \"import('./index.mjs')\""
