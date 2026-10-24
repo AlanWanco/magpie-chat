@@ -2034,12 +2034,50 @@ function boot() {
     else if (!state.models.length) toast("网关没有返回模型，检查 magpie 是否在运行", true);
     return loadConversations();
   }).catch(function (err) {
-    toast("连不上 magpie chat 服务：" + err.message, true);
+    // 界面先画出来了，只是数据还没到 —— 服务可能还在起（宿主刚被拉起、
+    // 或者端口还被上一个进程占着）。这里自动等一会儿再试，别弹个红字就完事。
+    bootRetry(err);
   });
 }
 
+// 服务还没就绪：把空态换成"正在连接"，每 600ms 重试一次，最多 20 次。
+var bootTries = 0;
+function bootRetry(err) {
+  bootTries += 1;
+  var empty = document.querySelector(".empty-state");
+  if (empty) {
+    var said = empty.querySelector("[data-boot]");
+    if (!said) {
+      said = document.createElement("div");
+      said.setAttribute("data-boot", "1");
+      said.style.cssText = "margin-top:10px;font-size:12px;color:var(--muted)";
+      empty.appendChild(said);
+    }
+    said.textContent = bootTries < 3
+      ? "正在连接对话服务…"
+      : "正在连接对话服务…（第 " + bootTries + " 次）";
+  }
+  if (bootTries >= 20) {
+    toast("连不上 magpie chat 服务：" + (err && err.message ? err.message : "服务没有启动"), true);
+    return;
+  }
+  setTimeout(function () { boot(); }, 600);
+}
+
+// 先把界面点亮：空态不依赖任何接口，服务还没起来时也能看到侧栏和输入框，
+// 而不是一片白等在那儿。数据随后由 boot() 填。
+function paintSkeleton() {
+  var box = $("#stream");
+  if (box && !box.children.length) box.appendChild(emptyState());
+  renderSessions();
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot);
+  document.addEventListener("DOMContentLoaded", function () {
+    paintSkeleton();
+    boot();
+  });
 } else {
+  paintSkeleton();
   boot();
 }
