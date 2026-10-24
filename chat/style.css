@@ -579,7 +579,16 @@ input, textarea { font: inherit; color: inherit; }
 }
 
 /* 消息列也收一点，读起来不至于一屏 200 个字 */
-.turn { width: 100%; max-width: 980px; margin: 0 auto; }
+/* 会话内容列：宽度由设置里的滑条控制（--conv-w），默认 980px；
+   100% 就是铺满，最窄由 JS 钳到 560px。列本身居中，但内容左对齐。 */
+.turn {
+  width: 100%;
+  max-width: var(--conv-w, 980px);
+  margin: 0 auto;
+}
+/* 注意：不要在 .app 上重复声明 --conv-w。
+   变量是在 :root（documentElement 行内样式）上设的，.app 一旦自己声明
+   就会盖掉继承值，滑条就失效了。 */
 
 .turn {
   display: flex;
@@ -764,7 +773,14 @@ input, textarea { font: inherit; color: inherit; }
 .mini:hover { background: var(--pill); color: var(--fg-2); }
 
 /* 空态 */
-.empty-state { padding: 36px 20px; text-align: center; color: var(--muted); }
+/* 空态也跟随会话列宽，否则缩窄后它还是满宽、看着错位 */
+.empty-state {
+  max-width: var(--conv-w, 980px);
+  margin: 0 auto;
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--muted);
+}
 .empty-state b { display: block; color: var(--fg); font-weight: 500; font-size: 14px; margin-bottom: 4px; }
 .empty-state p { margin: 0; font-size: 12px; }
 .empty-sugs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
@@ -786,10 +802,11 @@ input, textarea { font: inherit; color: inherit; }
 
 /* ---------- 输入区（仿 magpie .field） ---------- */
 /* 输入区占消息区宽度的 70%，跟着窗口缩放；窄窗口时才让它铺满 */
+/* 输入区宽度也单独可调（--composer-w），默认 70% */
 .composer {
   position: relative;
   flex: 0 0 auto;
-  width: 70%;
+  width: var(--composer-w, 70%);
   max-width: 100%;
   margin: 0 auto;
   padding: 10px 0 12px;

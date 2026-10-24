@@ -629,7 +629,9 @@ function applySettings(raw) {
     sidebar: s.sidebar !== false,
     settingsOpen: s.settingsOpen === true,
     leftWidth: Number(s.leftWidth) || 0,
-    rightWidth: Number(s.rightWidth) || 0
+    rightWidth: Number(s.rightWidth) || 0,
+    convWidth: Number(s.convWidth) || 72,
+    composerWidth: Number(s.composerWidth) || 70
   };
 }
 
@@ -933,10 +935,38 @@ var WIDTHS = {
   right: { min: 240, max: 560, key: "rightWidth" }
 };
 
+// 会话内容列与输入框的宽度：设置里存成百分比（会话列另有限制），
+// 这里换算成 CSS 变量。会话列 100% 就是铺满。
+var CONV_MIN = 560;      // 会话列最窄（px）
+var COMPOSER_MIN = 40;   // 输入框最窄（%）
+
 function applyWidths() {
   var s = state.settings;
   if (Number(s.leftWidth)) $("#sessions").style.setProperty("--side-w", clampWidth("left", s.leftWidth) + "px");
   if (Number(s.rightWidth)) $("#settingsPanel").style.setProperty("--set-w", clampWidth("right", s.rightWidth) + "px");
+  applyConvWidth(s.convWidth);
+  applyComposerWidth(s.composerWidth);
+}
+
+// pct 是「占可用宽度的百分比」；100 表示铺满
+function applyConvWidth(pct) {
+  var v = Number(pct);
+  if (!isFinite(v) || v <= 0) v = 72;
+  v = Math.max(0, Math.min(100, v));
+  var root = document.documentElement;
+  if (v >= 100) {
+    root.style.setProperty("--conv-w", "100%");
+    return;
+  }
+  // 用 calc 混百分比与最小值：既随窗口缩放，又不会窄到看不清
+  root.style.setProperty("--conv-w", "max(" + CONV_MIN + "px, " + v + "%)");
+}
+
+function applyComposerWidth(pct) {
+  var v = Number(pct);
+  if (!isFinite(v) || v <= 0) v = 70;
+  v = Math.max(COMPOSER_MIN, Math.min(100, v));
+  document.documentElement.style.setProperty("--composer-w", v + "%");
 }
 
 function clampWidth(side, v) {
@@ -1025,6 +1055,10 @@ function toggleSettings(open, persist) {
 
 function renderSettings() {
   $("#systemInput").value = state.settings.system || "";
+  $("#convWidth").value = String(Math.round(Number(state.settings.convWidth) || 72));
+  $("#convWidthValue").textContent = (Number(state.settings.convWidth) || 72) >= 100 ? "铺满" : Math.round(Number(state.settings.convWidth) || 72) + "%";
+  $("#composerWidth").value = String(Math.round(Number(state.settings.composerWidth) || 70));
+  $("#composerWidthValue").textContent = Math.round(Number(state.settings.composerWidth) || 70) + "%";
   $("#temperature").value = String(state.settings.temperature);
   $("#tempValue").textContent = Number(state.settings.temperature).toFixed(2);
   $("#maxTokens").value = String(state.settings.maxTokens || 0);
@@ -1838,6 +1872,24 @@ function bindUI() {
     var v = Number(e.target.value);
     $("#tempValue").textContent = v.toFixed(2);
     patchSettings({ temperature: v });
+  });
+
+  // 会话区 / 输入框宽度：拖动时立刻生效，松手才写盘
+  $("#convWidth").addEventListener("input", function (e) {
+    var v = Number(e.target.value);
+    applyConvWidth(v);
+    $("#convWidthValue").textContent = v >= 100 ? "铺满" : v + "%";
+  });
+  $("#convWidth").addEventListener("change", function (e) {
+    patchSettings({ convWidth: Number(e.target.value) });
+  });
+  $("#composerWidth").addEventListener("input", function (e) {
+    var v = Number(e.target.value);
+    applyComposerWidth(v);
+    $("#composerWidthValue").textContent = v + "%";
+  });
+  $("#composerWidth").addEventListener("change", function (e) {
+    patchSettings({ composerWidth: Number(e.target.value) });
   });
 
   $("#maxTokens").addEventListener("change", function (e) {
