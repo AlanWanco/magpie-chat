@@ -4,7 +4,7 @@
 
 **A chat page inside magpie's window.** Talk with magpie's own models, instructions, skills and MCP servers — no second agent needed.
 
-[![版本](https://img.shields.io/badge/version-0.1.2-blue)](https://github.com/Magiczerowxy/magpie-chat)
+[![版本](https://img.shields.io/badge/version-0.1.6-blue)](https://github.com/Magiczerowxy/magpie-chat)
 [![许可](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -23,6 +23,12 @@
 - **和 magpie 同一个样子**。配色与字体取自 magpie 自己的设计令牌，切换主题时对话页跟着变。
 - **可调布局**。右侧栏「布局」里两个滑条：会话区宽度（100% 即铺满，最窄 560px）、输入框宽度；左右两侧栏都能拖拽调宽、也都能收起。
 - **代码折叠**。一条消息里有多段代码时只展开最后一段，其余收起。
+
+### 截图
+
+在 magpie 窗口里的一次真实对话：公式由本地 KaTeX 渲染，表格正常排版，右侧设置栏可以调会话区与输入框宽度。
+
+![在 magpie 窗口里的对话](screenshots/23-math-and-layout.png)
 
 ### 安装
 
@@ -79,6 +85,12 @@ magpie 的插件页面跑在 `sandbox="allow-scripts"` 的框架里：没有网�
 - **Looks like magpie.** Colors and fonts come from magpie's own design tokens, so the page follows the window theme.
 - **Adjustable layout.** Two sliders under Layout: conversation width (100% fills the pane, never narrower than 560px) and composer width. Both sidebars can be dragged and collapsed.
 - **Collapsible code.** When a reply has several code blocks, only the last one is expanded.
+
+### Screenshot
+
+A real conversation inside magpie's window: math rendered by the bundled KaTeX, tables laid out normally, and the settings sidebar on the right for adjusting conversation and composer width.
+
+![Chat inside magpie's window](screenshots/23-math-and-layout.png)
 
 ### Install
 
