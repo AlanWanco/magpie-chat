@@ -62,6 +62,19 @@ magpie 的插件页面跑在 `sandbox="allow-scripts"` 的框架里：没有网�
 
 服务只监听回环地址，并拒绝非同源请求（只接受 opaque 的 `Origin: null` 与自身 origin），任意网页都无法借它消耗额度。
 
+### 打不开怎么办
+正常情况下装好、重启 magpie，打开「对话」就能用（干净环境实测 397ms 服务就绪）。
+
+如果看到这个页面卡住或「127.0.0.1 拒绝连接」：
+
+1. 先看 `magpie plugin` 的输出，有没有插件在反复报登录失败 / 401。
+   宿主加载插件是排队走的，前面卡住会拖到后面的页面插件。
+2. 把一直报错的插件停掉：`magpie plugin off <那个插件>`
+3. 还不行就用独立启动兜底：双击插件目录里的 `start-server.cmd`
+   （或 `start-server.vbs` 静默启动），再用 `install-autostart.cmd` 设成开机自启。
+
+细节见 [SERVE.md](SERVE.md)。
+
 ### 已知限制
 
 - MCP 实现了 Streamable HTTP 与 stdio，不含旧版 GET SSE 长连接与断线重连。
