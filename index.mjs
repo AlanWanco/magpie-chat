@@ -1,4 +1,4 @@
-// magpie-chat：在 magpie 窗口里加一个「对话」页面。
+// @magpie-community/page-chat：在 magpie 窗口里加一个「对话」页面。
 //
 // 两件事：
 //   1. 作为 OpenCode v1 插件被 magpie 的 Bun 宿主加载（不注册任何供应商，只借宿主的进程起服务）。
@@ -12,11 +12,11 @@ import { startServer } from "./lib/server.mjs";
 
 const started = startServer({ configDir: process.env.MAGPIE_CHAT_CONFIG || "", options: {} })
   .then((info) => {
-    console.log(`[magpie-chat] listening on http://127.0.0.1:${info.port}`);
+    console.log(`[page-chat] listening on http://127.0.0.1:${info.port}`);
     return info;
   })
   .catch((err) => {
-    console.error("[magpie-chat] could not start:", err?.message || err);
+    console.error("[page-chat] could not start:", err?.message || err);
     return null;
   });
 

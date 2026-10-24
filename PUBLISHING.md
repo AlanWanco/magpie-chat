@@ -17,9 +17,13 @@ magpie 文档「发布与上架 → GitHub 标签」的要求，逐条对照：
 装法（任选）：
 
 ```powershell
+magpie plugin add @magpie-community/page-chat     # npm 社区包（推荐）
 magpie plugin add Magiczerowxy/magpie-chat        # GitHub
 magpie plugin add ./magpie-chat                   # 本地文件夹
 ```
+
+包名遵循社区规则：只有页面的插件是 `@magpie-community/page-<name>`。
+插件 id 仍是 `magpie-chat`（id 不能带 `@` 和斜杠），配置目录也用它。
 
 ## package.json 里与 magpie 有关的字段
 
@@ -64,11 +68,12 @@ curl http://127.0.0.1:3477/api/bootstrap
 #   models: 18 | library mcp: 4 | version: 0.1.0
 ```
 
-## 收进官方推荐列表（可选）
+## 收进官方推荐列表
 
 想在 **插件 → 发现** 的推荐区出现，需要给
-[magpie-community/plugins](https://github.com/magpie-community/plugins) 的 `registry.json`
-提一个 PR：
+[magpie-community/plugins](https://github.com/magpie-community/plugins) 提一个 PR：
+把包放到 `packages/page-chat`（包名 `@magpie-community/page-chat`），并在
+`registry.json` 加一项：
 
 ```json
 {

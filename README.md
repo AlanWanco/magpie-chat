@@ -18,10 +18,16 @@
 ## 安装
 
 ```powershell
+magpie plugin add @magpie-community/page-chat
+```
+
+也可以用仓库地址装：
+
+```powershell
 magpie plugin add Magiczerowxy/magpie-chat
 ```
 
-或者在应用里：插件 → 发现 → 非官方插件 · GitHub → 找到 **Chat** → 添加。
+或者在应用里：插件 → 发现 → 找到 **Chat** → 添加。
 
 装好后侧栏「插件」里点「对话」。
 
@@ -29,7 +35,7 @@ magpie plugin add Magiczerowxy/magpie-chat
 
 这个插件**不注册供应商、不需要登录、不保存任何凭据**。它复用 magpie 自己已经配好的模型和额度，请求全部由 magpie 的网关发出，所以用量与故障切换和 Agent 一致。
 
-它保存的只有你自己的东西，都在 magpie 配置目录下：
+它保存的只有你自己的东西，都在 magpie 配置目录下（目录名沿用插件 id `magpie-chat`）：
 
 ```
 ~/.config/magpie/magpie-chat/
