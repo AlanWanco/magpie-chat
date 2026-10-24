@@ -1,6 +1,6 @@
 {
   "name": "@magpie-community/page-chat",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Chat with magpie's own models in the window: MCP tools, instructions, skills, images and LaTeX.",
   "type": "module",
   "main": "./index.mjs",
