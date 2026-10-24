@@ -1302,6 +1302,20 @@ function persistConversation() {
 
 /* ================= 消息渲染 ================= */
 
+// 滚动条 3 秒无操作就渐隐：滚动时加 .scrolling 浮现，静止 3 秒后去掉
+var scrollFadeTimer = null;
+function markScrolling() {
+  var stream = $("#stream");
+  if (!stream) return;
+  stream.classList.add("scrolling");
+  if (scrollFadeTimer) clearTimeout(scrollFadeTimer);
+  scrollFadeTimer = setTimeout(function () {
+    var s = $("#stream");
+    if (s) s.classList.remove("scrolling");
+    scrollFadeTimer = null;
+  }, 3000);
+}
+
 function scrollBottom(force) {
   var box = $("#stream");
   if (!box) return;
@@ -1863,6 +1877,9 @@ function bindUI() {
   $("#dockToggle").addEventListener("click", function () { setSidebar(true); });
   bindAttachments();
   bindResizers();
+
+  // 滚动条渐隐：滚动时浮现，停 3 秒淡出
+  $("#stream").addEventListener("scroll", markScrolling, { passive: true });
 
   $("#systemInput").addEventListener("input", function (e) {
     patchSettings({ system: e.target.value });
