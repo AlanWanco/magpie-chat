@@ -9,6 +9,16 @@
 // 「带路页」，真正的界面由本插件的服务提供。
 
 import { startServer } from "./lib/server.mjs";
+import { writeFileSync, appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+
+// 诊断标记：证明 index.mjs 到底有没有被执行、什么时候执行的。
+// 写到 ~/.magpie-chat-boot.log，排查完可以删掉这几行。
+try {
+  const log = join(homedir(), ".magpie-chat-boot.log");
+  appendFileSync(log, `[${new Date().toISOString()}] index.mjs loaded, pid=${process.pid}, cwd=${process.cwd()}\n`);
+} catch (err) { /* 写不了就算了，不影响插件 */ }
 
 const started = startServer({ configDir: process.env.MAGPIE_CHAT_CONFIG || "", options: {} })
   .then((info) => {
