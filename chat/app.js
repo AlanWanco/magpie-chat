@@ -2057,11 +2057,13 @@ function bootRetry(err) {
       ? "正在连接对话服务…"
       : "正在连接对话服务…（第 " + bootTries + " 次）";
   }
-  if (bootTries >= 20) {
-    toast("连不上 magpie chat 服务：" + (err && err.message ? err.message : "服务没有启动"), true);
-    return;
+  // 一直等到服务起来为止。插件宿主可能要排队加载很多插件（有人装了几十个），
+  // 轮到我们可能是一两分钟后 —— 页面不能十几秒就放弃，那样用户只能对着错误页。
+  // 90 秒后才开始给"看起来卡住了"的提示，但不停止重试。
+  if (bootTries === 90) {
+    toast("对话服务起得比较慢，还在等…（宿主可能正被其他插件占用）", false);
   }
-  setTimeout(function () { boot(); }, 600);
+  setTimeout(function () { boot(); }, 800);
 }
 
 // 先把界面点亮：空态不依赖任何接口，服务还没起来时也能看到侧栏和输入框，

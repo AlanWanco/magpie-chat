@@ -1,18 +1,21 @@
 // 带路页：把它自己（也就是 magpie 页面那个框架）导航到插件的服务。
-// 页面运行在 sandbox="allow-scripts" 的框架里：没有网络、不能内嵌，只能这样跳出去。
 //
-// 为什么"立刻跳"：界面（chat/index.html）是静态 HTML+CSS，不依赖服务就能画出来 ——
-// 侧栏、输入框、空态都是 DOM。只有数据要等服务。所以先跳过去把界面亮出来，
-// 缺的数据由界面自己重试，比在这里杵着"正在启动"好得多。
+// 这里必须"直接跳"，不能先探测：
+//   页面的 CSP 是 connect-src 'none'，fetch/XHR/WebSocket 全被禁止 ——
+//   连 no-cors 的请求都会被直接拒绝。所以「先探一下服务在不在」这条路走不通，
+//   alive() 永远返回 false，页面会永远停在等待页。
+//   magpie 文档也明说了：这个页面唯一能做的联网动作就是把自己跳转到别处。
 //
-// 端口：默认 3477，但窗口里可能同时有命令行 magpie 和桌面 magpie 两个宿主，
-// 它们会抢这个端口，抢输的那个会退到 3478/3479/3480。这里挨个探一遍，
-// 哪个通就去哪个 —— 页面不能假设永远是 3477。
+// 端口用固定的 3477。多个 magpie 实例同时在跑时，后来者会退到 3478…，
+// 但页面一律跳 3477 —— 指向先起来的那个，行为反而更一致。
+//
+// 顺手把窗口的主题和设计令牌一起带上（magpie 的 bridge 已经把它们算好了），
+// 这样对话页的配色和字体跟窗口完全一致，连用户的自定义主题也算在内。
 (async () => {
-  const CANDIDATES = [3477, 3478, 3479, 3480];
+  const DEFAULT_PORT = 3477;
+  let port = DEFAULT_PORT;
   let theme = "";
   let tokens = null;
-  let port = 0;
 
   try {
     const t = await window.magpie?.ready;           // { dark, lang, tokens }
@@ -41,30 +44,5 @@
     }
   }
 
-  const go = (p) => location.replace("http://127.0.0.1:" + p + "/?" + q.toString());
-
-  // 探一下端口通不通：no-cors 拿不到内容，但"连上了"和"连接被拒"能分开
-  async function alive(p) {
-    try {
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 700);
-      await fetch("http://127.0.0.1:" + p + "/api/ping", { mode: "no-cors", cache: "no-store", signal: ctl.signal });
-      clearTimeout(timer);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  // 用户显式配了端口就只认它；否则按候选顺序找
-  const list = port ? [port] : CANDIDATES;
-
-  // 快速探一轮（每个 700ms 超时，但通常前几个立刻有结果）
-  for (const p of list) {
-    if (await alive(p)) { go(p); return; }
-  }
-
-  // 一个都没起来：托管给界面自己重试。先跳默认端口，
-  // chat 页在数据拿不到时会每 600ms 重试一次，并提示"正在连接"。
-  go(list[0]);
+  location.replace("http://127.0.0.1:" + port + "/?" + q.toString());
 })();
