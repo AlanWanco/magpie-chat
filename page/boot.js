@@ -44,11 +44,23 @@
       }
       return "";
     };
-    const font = pick("--ui-font", "--font", "--magpie-font");
+    // magpie 设的 --ui-font 形如 `"Noto Sans SC", var(--font)` —— 里面套着 var(--font)。
+    // 原样带到对话页、又把它设成那边的 --font，就成了自己引用自己，
+    // 整条栈会失效。所以先把内嵌的 var(--font) 换成实际的基础字体栈再传。
+    const baseFont = pick("--font", "--magpie-font");
+    const baseCode = pick("--code", "--magpie-code");
+    const subst = (value, varName, replacement) => {
+      if (!value) return "";
+      if (!replacement) return value;
+      return value.replace(new RegExp("var\\(\\s*" + varName + "\\s*\\)", "g"), replacement);
+    };
+    const font = subst(pick("--ui-font"), "--font", baseFont);
     const weight = pick("--ui-weight", "--magpie-font-weight");
     const style = pick("--ui-style");
-    const code = pick("--code-font", "--code", "--magpie-code");
+    const code = subst(pick("--code-font", "--code"), "--code", baseCode);
+
     if (font) extra.font = font;
+    else if (baseFont) extra.font = baseFont;
     if (weight) extra["font-weight"] = weight;
     if (style) extra["font-style"] = style;
     if (code) extra.code = code;
