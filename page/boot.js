@@ -30,12 +30,41 @@
     if (o && Number.isFinite(Number(o.port)) && Number(o.port) > 0) port = Number(o.port);
   } catch { /* 没有 options 就用默认端口 */ }
 
+  // 字体：跟着 magpie 设置里选的那个走。
+  // magpie 的 CSS 里，用户设的字体是 --ui-font（回退 --font），粗细是 --ui-weight（回退 400），
+  // 代码字体是 --code-font（回退 --code）。这里把它们的**实际值**读出来传给对话页，
+  // 因为是跳转过去的，那边的页面拿不到 magpie 的 CSS 变量，只能靠这里带过去。
+  const extra = {};
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    const pick = (...names) => {
+      for (const n of names) {
+        const v = cs.getPropertyValue(n).trim();
+        if (v && v !== "initial" && v !== "inherit") return v;
+      }
+      return "";
+    };
+    const font = pick("--ui-font", "--font", "--magpie-font");
+    const weight = pick("--ui-weight", "--magpie-font-weight");
+    const style = pick("--ui-style");
+    const code = pick("--code-font", "--code", "--magpie-code");
+    if (font) extra.font = font;
+    if (weight) extra["font-weight"] = weight;
+    if (style) extra["font-style"] = style;
+    if (code) extra.code = code;
+  } catch { /* 读不到就用页面自己的兜底字体 */ }
+
   const q = new URLSearchParams();
   if (theme) q.set("theme", theme);
-  if (tokens) {
-    // 只留非空的令牌，压成一个短串；令牌本身就是 magpie 自己的 CSS 变量值
+  if (true) {
+    // 只留非空的令牌，压成一个短串；令牌本身就是 magpie 自己的 CSS 变量值。
+    // 自己读到的字体合并进去（上面 extra），覆盖 magpie 没给的那部分。
     const slim = {};
-    for (const [k, v] of Object.entries(tokens)) {
+    for (const [k, v] of Object.entries(tokens || {})) {
+      const s = String(v ?? "").trim();
+      if (s) slim[k] = s;
+    }
+    for (const [k, v] of Object.entries(extra)) {
       const s = String(v ?? "").trim();
       if (s) slim[k] = s;
     }
