@@ -836,6 +836,57 @@ input, textarea { font: inherit; color: inherit; }
 
 .mini:hover { background: var(--pill); color: var(--fg-2); }
 
+/* ---------- 模型状态提示（觅食中 / 找到食物 / 没找到） ----------
+   跟在每一条模型回复的底部，不悬浮在输入框那边。 */
+.turn-forage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  /* 颜色平滑过渡：思考 → 失败要变红，不能一下子跳过去 */
+  transition: color .45s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.turn-forage[hidden] { display: none; }
+
+/* 状态小圆点：思考时呼吸，结束就静止 */
+.forage-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: currentColor;
+  opacity: .55;
+  transition: opacity .45s ease, background-color .45s ease;
+}
+.turn-forage.busy .forage-dot { animation: forage-breathe 1.3s ease-in-out infinite; }
+@keyframes forage-breathe {
+  0%, 100% { opacity: .2; transform: scale(.8); }
+  50%      { opacity: .85; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-forage.busy .forage-dot { animation: none; opacity: .55; }
+}
+
+/* 计时器用等宽数字，跳秒时不会左右抖 */
+.forage-time {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  transition: color .45s ease;
+}
+
+/* 没找到食物：整行变红 */
+.turn-forage.fail { color: var(--red); }
+.turn-forage.fail .forage-time { color: var(--red); opacity: .75; }
+
+/* 找到了：用 magpie 自己的绿色 */
+.turn-forage.done { color: var(--green); }
+.turn-forage.done .forage-time { color: var(--green); opacity: .8; }
+
 /* 空态 */
 /* 空态也跟随会话列宽，否则缩窄后它还是满宽、看着错位 */
 .empty-state {

@@ -1265,6 +1265,8 @@ function normalizeMessage(m) {
     model: m.model || "",
     stopped: Boolean(m.stopped),
     ms: Number(m.ms || 0),
+    // 这一轮"从按下发送到回答完"的耗时，重新打开对话时底部那行要显示它
+    forageMs: Number(m.forageMs || 0),
     error: ""
   };
 }
@@ -1286,7 +1288,8 @@ function persistConversation() {
         usage: m.usage || undefined,
         model: m.model || undefined,
         stopped: m.stopped || undefined,
-        ms: m.ms || 0
+        ms: m.ms || 0,
+        forageMs: m.forageMs || 0
       };
     })
   };
@@ -1551,11 +1554,18 @@ function buildTurn(msg) {
   actions.hidden = !msg.content;
   root.appendChild(actions);
 
+  // 这一轮的模型状态，压在这一侧消息的最底下（就是"复制"下面那一行）
+  var forage = el("div", { class: "turn-forage", hidden: true });
+  root.appendChild(forage);
+
   var refs = {
     root: root, msg: msg, label: label, meta: meta, think: think,
     thinkBody: think.querySelector(".think-body"), talks: talks, cards: cards,
-    body: bodyMd, err: err, actions: actions, copy: copy, dirty: false
+    body: bodyMd, err: err, actions: actions, copy: copy, forage: forage, dirty: false
   };
+  // 老对话（重新打开时）：把当时的结果直接画出来
+  if (msg.error) paintTurnForage(refs, "fail", "Magpie没有找到食物", null);
+  else if (msg.forageMs || msg.ms) paintTurnForage(refs, "done", "Magpie找到了食物！", msg.forageMs || msg.ms);
   updateMeta(refs);
   return refs;
 }
@@ -1768,6 +1778,7 @@ function send() {
     clientId: state.clientId
   };
   var started = Date.now();
+  forageBegin(refs); // 开始计时：从按下发送到这一轮结束，显示在这条回复的底部
 
   streamChat(payload, function (evt) { handleEvent(evt, refs); }, state.abort.signal)
     .then(function () {
@@ -1887,6 +1898,70 @@ function handleTool(evt, refs) {
   }
 }
 
+/* ---------- 模型状态提示：觅食中 / 找到食物 / 没找到 ----------
+   计时从用户按下发送算起，到这一轮结束为止。 */
+var forage = { startAt: 0, tick: null, hideTimer: null };
+
+// 2h32min22s / 32min22s / 22s
+function fmtForageTime(ms) {
+  var total = Math.max(0, Math.floor(ms / 1000));
+  var h = Math.floor(total / 3600);
+  var m = Math.floor((total % 3600) / 60);
+  var s = total % 60;
+  if (h > 0) return h + "h" + m + "min" + s + "s";
+  if (m > 0) return m + "min" + s + "s";
+  return s + "s";
+}
+
+// 把状态画到某一轮消息的底部。kind: busy | done | fail
+function paintTurnForage(refs, kind, text, ms) {
+  var box = refs && refs.forage;
+  if (!box) return;
+  box.hidden = false;
+  box.classList.remove("busy", "done", "fail");
+  if (kind) box.classList.add(kind);
+  while (box.firstChild) box.removeChild(box.firstChild);
+  box.appendChild(el("span", { class: "forage-dot" }));
+  box.appendChild(el("span", { class: "forage-text", text: text }));
+  if (ms != null) box.appendChild(el("span", { class: "forage-time", text: " · " + fmtForageTime(ms) }));
+}
+
+function forageClearTimers() {
+  if (forage.tick) { clearInterval(forage.tick); forage.tick = null; }
+}
+
+// 开始：在这一轮消息底部显示"正在觅食ing…"，每秒走一次计时
+function forageBegin(refs) {
+  forageClearTimers();
+  forage.startAt = Date.now();
+  forage.refs = refs;
+  paintTurnForage(refs, "busy", "Magpie正在觅食ing…", 0);
+  forage.tick = setInterval(function () {
+    var box = forage.refs && forage.refs.forage;
+    if (!box) return;
+    var time = box.querySelector(".forage-time");
+    if (time) time.textContent = " · " + fmtForageTime(Date.now() - forage.startAt);
+  }, 1000);
+}
+
+// 结束：ok=true 是找到了，false 是没找到（变红）。结果留在消息底部，跟着这条回复走。
+function forageEnd(refs, ok, stopped) {
+  var elapsed = forage.startAt ? Date.now() - forage.startAt : 0;
+  forageClearTimers();
+  var box = refs && refs.forage;
+  if (!box) return;
+  if (stopped) {
+    box.hidden = true;
+    return;
+  }
+  if (ok) {
+    paintTurnForage(refs, "done", "Magpie找到了食物！", elapsed);
+    if (refs.msg) refs.msg.forageMs = elapsed; // 重新打开这段对话时还能显示
+  } else {
+    paintTurnForage(refs, "fail", "Magpie没有找到食物", null);
+  }
+}
+
 function finish(refs) {
   state.busy = false;
   state.abort = null;
@@ -1905,6 +1980,12 @@ function finish(refs) {
   updateSend();
   scrollBottom(false);
   persistConversation();
+
+  // 觅食状态收尾：出错变红，用户手动停止就收起，正常就是找到了
+  var m = refs.msg || {};
+  if (m.error) forageEnd(refs, false, false);
+  else if (m.stopped) forageEnd(refs, false, true);
+  else forageEnd(refs, true, false);
 }
 
 function stop() {
