@@ -10,9 +10,16 @@
 
 import { startServer } from "./lib/server.mjs";
 
-const started = startServer({ configDir: process.env.MAGPIE_CHAT_CONFIG || "", options: {} })
+// 绑哪个地址由 MAGPIE_CHAT_HOST 决定（默认 127.0.0.1）。设成 0.0.0.0 时，
+// 局域网里别的电脑也能打开对话页 —— 只有自己家的网络才这么设。
+const options = {
+  host: process.env.MAGPIE_CHAT_HOST || "",
+  port: process.env.MAGPIE_CHAT_PORT ? Number(process.env.MAGPIE_CHAT_PORT) : undefined,
+};
+
+const started = startServer({ configDir: process.env.MAGPIE_CHAT_CONFIG || "", options })
   .then((info) => {
-    console.log(`[page-chat] listening on http://127.0.0.1:${info.port}`);
+    console.log(`[page-chat] listening on http://${options.host || "127.0.0.1"}:${info.port}`);
     return info;
   })
   .catch((err) => {

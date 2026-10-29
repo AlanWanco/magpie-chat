@@ -25,10 +25,16 @@
     }
   } catch { /* 没有 bridge 就退回默认主题 */ }
 
+  // 跳哪个主机：默认跟着打开 magpie 的那个地址走。
+  // magpie 跑在别的电脑上（Docker、家用服务器）时，服务不再只绑回环，
+  // 页面用 127.0.0.1 跳过去只会撞上自己那台电脑的空端口。
+  let host = "";
   try {
     const o = await window.magpie?.options?.get?.();
+    if (o && typeof o.host === "string" && o.host.trim()) host = o.host.trim();
     if (o && Number.isFinite(Number(o.port)) && Number(o.port) > 0) port = Number(o.port);
-  } catch { /* 没有 options 就用默认端口 */ }
+  } catch { /* 没有 options 就用默认 */ }
+  if (!host) host = location.hostname || "127.0.0.1";
 
   // 字体不在这里传。
   //
@@ -52,5 +58,5 @@
     }
   }
 
-  location.replace("http://127.0.0.1:" + port + "/?" + q.toString());
+  location.replace("http://" + host + ":" + port + "/?" + q.toString());
 })();
