@@ -453,6 +453,9 @@ function mathNode(tex, display) {
 
 /* ================= 状态 ================= */
 
+// 草稿对话的固定 id（不会出现在服务端，只在左侧列表里临时显示）
+var DRAFT_ID = "__draft__";
+
 var state = {
   boot: null,
   settings: {
@@ -464,6 +467,9 @@ var state = {
   conversations: [],
   messages: [],
   convId: null,
+  // 点了"新对话"但还没发消息时，左侧先挂一条草稿；发出第一条就变成真对话，
+  // 空着切走就直接丢掉，不在列表里留空壳。
+  draft: null,
   title: "新对话",
   busy: false,
   stopped: false,
@@ -631,7 +637,8 @@ function applySettings(raw) {
     leftWidth: Number(s.leftWidth) || 0,
     rightWidth: Number(s.rightWidth) || 0,
     convWidth: Number(s.convWidth) || 72,
-    composerWidth: Number(s.composerWidth) || 70
+    composerWidth: Number(s.composerWidth) || 70,
+    syncWidth: s.syncWidth === true
   };
 }
 
@@ -969,6 +976,21 @@ function applyComposerWidth(pct) {
   document.documentElement.style.setProperty("--composer-w", v + "%");
 }
 
+// "同步调整"打开时，拖动其中一条把另一条也拉到同一个值
+function syncWidthTo(from, v) {
+  var n = Math.round(Number(v) || 0);
+  // 两个都要记在 state 里：拖动过程中只改 DOM，等松手才 patchSettings，
+  // 这里不记的话同步读到的是上一次的值。
+  state.settings.convWidth = n;
+  state.settings.composerWidth = n;
+  applyConvWidth(n);
+  applyComposerWidth(n);
+  $("#convWidth").value = String(n);
+  $("#composerWidth").value = String(n);
+  $("#convWidthValue").textContent = n >= 100 ? "铺满" : n + "%";
+  $("#composerWidthValue").textContent = n + "%";
+}
+
 function clampWidth(side, v) {
   var w = WIDTHS[side];
   return Math.max(w.min, Math.min(w.max, Math.round(Number(v) || w.min)));
@@ -1063,6 +1085,7 @@ function renderSettings() {
   $("#tempValue").textContent = Number(state.settings.temperature).toFixed(2);
   $("#maxTokens").value = String(state.settings.maxTokens || 0);
   $("#showReasoning").setAttribute("aria-checked", state.settings.showReasoning ? "true" : "false");
+  $("#syncWidth").setAttribute("aria-checked", state.settings.syncWidth ? "true" : "false");
   renderSetList("#instructionList", state.library.instructions || [], "instructions", function (item) {
     return { key: item.id || item.name, name: item.name || item.id, extra: item.size ? item.size + " B" : "" };
   });
@@ -1149,11 +1172,30 @@ function loadConversations() {
 function renderSessions() {
   var box = $("#sessionList");
   while (box.firstChild) box.removeChild(box.firstChild);
-  if (!state.conversations.length) {
+
+  var items = state.conversations.slice();
+  // 草稿（刚点"新对话"、还没发消息）排在最前，标题就叫"新对话"
+  if (state.draft) items.unshift(state.draft);
+
+  if (!items.length) {
     box.appendChild(el("div", { class: "sess-empty", text: "还没有保存的对话" }));
     return;
   }
-  state.conversations.forEach(function (item) {
+
+  items.forEach(function (item) {
+    if (item.id === DRAFT_ID) {
+      // 草稿：没写字时叫"新对话"，一发送就把刚输入的内容当标题（没有置顶和删除）
+      var dbtn = el("button", {
+        class: "sess" + (state.convId ? "" : " on"),
+        type: "button",
+        title: item.title || "新对话"
+      },
+        el("span", { class: "sess-title", text: item.title || "新对话" }),
+        el("span", { class: "sess-time", text: "刚刚" })
+      );
+      box.appendChild(dbtn);
+      return;
+    }
     var on = item.id === state.convId;
     var pinned = Boolean(item.pinned);
 
@@ -1234,6 +1276,7 @@ function setSidebar(open) {
 
 function openConversation(id) {
   if (state.busy) { toast("正在生成，先停止再切换对话", true); return; }
+  dropBlankDraft(); // 切换到别的对话时，空着的"新对话"不该留在列表里
   api("/api/conversations/" + encodeURIComponent(id)).then(function (conv) {
     if (!conv) return;
     state.convId = conv.id;
@@ -1297,6 +1340,7 @@ function persistConversation() {
     if (!saved) return;
     state.convId = saved.id;
     state.title = saved.title || state.title;
+    state.draft = null; // 已经是真对话了，草稿退场
     return loadConversations();
   }).catch(function (err) {
     toast("对话保存失败：" + err.message, true);
@@ -1730,6 +1774,13 @@ function send() {
   if (!state.convId && state.title === "新对话") {
     state.title = text.replace(/\s+/g, " ").slice(0, 30);
   }
+  // 草稿发了第一条消息：先把列表里那条的标题换成刚输入的内容（不用等服务器），
+  // 等保存成功再把它换成真正的对话条目（见 persistConversation）。
+  if (state.draft) {
+    state.draft.title = state.title;
+    state.draft.updated = Date.now();
+    renderSessions();
+  }
 
   var box = $("#stream");
   var empty = box.querySelector(".empty-state");
@@ -2001,14 +2052,31 @@ function stop() {
 
 /* ================= 事件绑定 ================= */
 
+// 现在是不是停在一个"刚点新建、还没写任何东西"的空白对话里
+function isBlankDraft() {
+  return Boolean(state.draft) && !state.convId && !state.messages.length;
+}
+
 function newChat() {
   if (state.busy) { toast("正在生成，先停止再新建对话", true); return; }
+  // 已经在一个空白的新对话里了：再点"新对话"就保持原样，别叠出第二个
+  if (isBlankDraft()) { $("#input").focus(); return; }
+  state.draft = { id: DRAFT_ID, title: "新对话", updated: Date.now() };
   state.convId = null;
   state.title = "新对话";
   state.messages = [];
   renderMessages();
   renderSessions();
   $("#input").focus();
+}
+
+// 离开草稿：如果它一个字都没写，就从列表里丢掉
+function dropBlankDraft() {
+  if (state.draft && !state.messages.length) {
+    state.draft = null;
+    return true;
+  }
+  return false;
 }
 
 function bindUI() {
@@ -2051,21 +2119,49 @@ function bindUI() {
   });
 
   // 会话区 / 输入框宽度：拖动时立刻生效，松手才写盘
+  // 两个宽度滑条：开了"同步调整"就一起走
   $("#convWidth").addEventListener("input", function (e) {
     var v = Number(e.target.value);
+    state.settings.convWidth = v;
     applyConvWidth(v);
     $("#convWidthValue").textContent = v >= 100 ? "铺满" : v + "%";
+    if (state.settings.syncWidth) syncWidthTo("conv", v);
   });
   $("#convWidth").addEventListener("change", function (e) {
-    patchSettings({ convWidth: Number(e.target.value) });
+    var v = Number(e.target.value);
+    patchSettings(state.settings.syncWidth ? { convWidth: v, composerWidth: v } : { convWidth: v });
   });
   $("#composerWidth").addEventListener("input", function (e) {
     var v = Number(e.target.value);
+    state.settings.composerWidth = v;
     applyComposerWidth(v);
     $("#composerWidthValue").textContent = v + "%";
+    if (state.settings.syncWidth) syncWidthTo("composer", v);
   });
   $("#composerWidth").addEventListener("change", function (e) {
-    patchSettings({ composerWidth: Number(e.target.value) });
+    var v = Number(e.target.value);
+    patchSettings(state.settings.syncWidth ? { convWidth: v, composerWidth: v } : { composerWidth: v });
+  });
+
+  // 开关：打开时先把两个宽度统一成较小的那个
+  $("#syncWidth").addEventListener("click", function () {
+    var on = !state.settings.syncWidth;
+    state.settings.syncWidth = on;
+    $("#syncWidth").setAttribute("aria-checked", on ? "true" : "false");
+    if (on) {
+      var v = Math.min(Number(state.settings.convWidth) || 72, Number(state.settings.composerWidth) || 70);
+      state.settings.convWidth = v;
+      state.settings.composerWidth = v;
+      applyConvWidth(v);
+      applyComposerWidth(v);
+      $("#convWidth").value = String(v);
+      $("#composerWidth").value = String(v);
+      $("#convWidthValue").textContent = v >= 100 ? "铺满" : v + "%";
+      $("#composerWidthValue").textContent = v + "%";
+      patchSettings({ syncWidth: true, convWidth: v, composerWidth: v });
+    } else {
+      patchSettings({ syncWidth: false });
+    }
   });
 
   $("#maxTokens").addEventListener("change", function (e) {

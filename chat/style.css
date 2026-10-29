@@ -925,8 +925,10 @@ input, textarea { font: inherit; color: inherit; }
   width: var(--composer-w, 70%);
   max-width: 100%;
   margin: 0 auto;
+  /* 必须是 border-box：content-box 时 width:100% 还要再加左右各几十像素的 padding，
+     整条输入框会溢出 .main，直接压到右侧设置栏下面。 */
+  box-sizing: border-box;
   padding: 8px clamp(20px, 5vw, 72px) 0;
-  box-sizing: content-box;
 }
 
 /* 让 field 的底边就是页面底边，只留一点点视觉呼吸（贴住但不切字） */
