@@ -30,53 +30,20 @@
     if (o && Number.isFinite(Number(o.port)) && Number(o.port) > 0) port = Number(o.port);
   } catch { /* 没有 options 就用默认端口 */ }
 
-  // 字体：跟着 magpie 设置里选的那个走。
-  // magpie 的 CSS 里，用户设的字体是 --ui-font（回退 --font），粗细是 --ui-weight（回退 400），
-  // 代码字体是 --code-font（回退 --code）。这里把它们的**实际值**读出来传给对话页，
-  // 因为是跳转过去的，那边的页面拿不到 magpie 的 CSS 变量，只能靠这里带过去。
-  const extra = {};
-  try {
-    const cs = getComputedStyle(document.documentElement);
-    const pick = (...names) => {
-      for (const n of names) {
-        const v = cs.getPropertyValue(n).trim();
-        if (v && v !== "initial" && v !== "inherit") return v;
-      }
-      return "";
-    };
-    // magpie 设的 --ui-font 形如 `"Noto Sans SC", var(--font)` —— 里面套着 var(--font)。
-    // 原样带到对话页、又把它设成那边的 --font，就成了自己引用自己，
-    // 整条栈会失效。所以先把内嵌的 var(--font) 换成实际的基础字体栈再传。
-    const baseFont = pick("--font", "--magpie-font");
-    const baseCode = pick("--code", "--magpie-code");
-    const subst = (value, varName, replacement) => {
-      if (!value) return "";
-      if (!replacement) return value;
-      return value.replace(new RegExp("var\\(\\s*" + varName + "\\s*\\)", "g"), replacement);
-    };
-    const font = subst(pick("--ui-font"), "--font", baseFont);
-    const weight = pick("--ui-weight", "--magpie-font-weight");
-    const style = pick("--ui-style");
-    const code = subst(pick("--code-font", "--code"), "--code", baseCode);
-
-    if (font) extra.font = font;
-    else if (baseFont) extra.font = baseFont;
-    if (weight) extra["font-weight"] = weight;
-    if (style) extra["font-style"] = style;
-    if (code) extra.code = code;
-  } catch { /* 读不到就用页面自己的兜底字体 */ }
+  // 字体不在这里传。
+  //
+  // 试过从 magpie 页面的 CSS 变量里读 --ui-font 再带过去，但时机靠不住：
+  // magpie 是设置加载完之后才把 --ui-font 写到 :root 上的，这里 await 完
+  // magpie.ready 立刻读，经常读到空。而且页面 CSP 是 connect-src 'none'，
+  // 读不到也没法重试。现在改成服务端直接读 magpie 的 settings.json，
+  // 由 /api/fonts.css 提供给对话页 —— 那边什么时候读都准。
 
   const q = new URLSearchParams();
   if (theme) q.set("theme", theme);
   if (true) {
     // 只留非空的令牌，压成一个短串；令牌本身就是 magpie 自己的 CSS 变量值。
-    // 自己读到的字体合并进去（上面 extra），覆盖 magpie 没给的那部分。
     const slim = {};
     for (const [k, v] of Object.entries(tokens || {})) {
-      const s = String(v ?? "").trim();
-      if (s) slim[k] = s;
-    }
-    for (const [k, v] of Object.entries(extra)) {
       const s = String(v ?? "").trim();
       if (s) slim[k] = s;
     }
